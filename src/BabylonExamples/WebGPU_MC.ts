@@ -33,6 +33,7 @@ import { Float16Array } from "@petamoriken/float16";
 import { pbrVertexShader } from "babylonjs/Shaders/pbr.vertex";
 import { getCsSource } from "./getCS";
 import { triTable } from "./triTable";
+import { sizeOneSSbo } from "./globalVariables";
 
 
 const AllDicomPixelData: Int16Array[] = []
@@ -558,8 +559,8 @@ export class WebGPU_MC {
             const normals: number[] = []
             let cntPoint = 0
 
-            gpuBuffert1.mapAsync(0x0001, 0, 10666665 * 4 * 3).then(function () {
-                const copyArrayBuffer = gpuBuffert1.getMappedRange(0, 10666665 * 4 * 3);
+            gpuBuffert1.mapAsync(0x0001, 0,sizeOneSSbo * 3).then(function () {
+                const copyArrayBuffer = gpuBuffert1.getMappedRange(0,sizeOneSSbo * 3);
 
                 const data = new Uint8Array(10666665 * 4 * 3);
                 data.set(new Uint8Array(copyArrayBuffer));
@@ -596,8 +597,8 @@ export class WebGPU_MC {
                 // that.scene.defaultMaterial.backFaceCulling = false;
             })
 
-            gpuBuffert2.mapAsync(0x0001, 0, 10666665 * 4 * 3).then(function () {
-                const copyArrayBuffer2 = gpuBuffert2.getMappedRange(0, 10666665 * 4 * 3);
+            gpuBuffert2.mapAsync(0x0001, 0,sizeOneSSbo * 3).then(function () {
+                const copyArrayBuffer2 = gpuBuffert2.getMappedRange(0,sizeOneSSbo * 3);
 
                 const data = new Uint8Array(10666665 * 4 * 3);
                 data.set(new Uint8Array(copyArrayBuffer2));
@@ -690,13 +691,13 @@ export class WebGPU_MC {
             //const device = that.engineGPU._device;
             // const gpuBuffer = device.createBuffer({
             //     mappedAtCreation: false,
-            //     size: 10666665 * 4,
+            //     size:sizeOneSSbo,
             //     usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
             // })
-            // commandEncoder.copyBufferToBuffer(that.ssboOutput, 0, gpuBuffer, 0, 10666665 * 4)
+            // commandEncoder.copyBufferToBuffer(that.ssboOutput, 0, gpuBuffer, 0,sizeOneSSbo)
 
-            // gpuBuffer.mapAsync(0x0001, 0, 10666665 * 4).then(function () {
-            //     const copyArrayBuffer = gpuBuffer.getMappedRange(0, 10666665 * 4);
+            // gpuBuffer.mapAsync(0x0001, 0,sizeOneSSbo).then(function () {
+            //     const copyArrayBuffer = gpuBuffer.getMappedRange(0,sizeOneSSbo);
 
             //     const data = new Uint8Array(10666665 * 4);
 
@@ -729,18 +730,19 @@ export class WebGPU_MC {
             // }
             // passEncoder.draw(3 * 10666665, 1, 0, 0);
             // passEncoder.end();
+           
             return [commandEncoder.finish()]
             function gBufferForCopy(){
                 return device.createBuffer({
                     mappedAtCreation: false,
-                    size: 10666665 * 4 * 3,
+                    size: sizeOneSSbo * 3 ,
                     usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
                 })
             }
             function bindSSboOutputToBufferOfCanMap(gpuBuffer:GPUBuffer,ssboOutputs: GPUBuffer[]){
-                commandEncoder.copyBufferToBuffer(ssboOutputs[0], 0, gpuBuffer, 0, 10666665 * 4)
-                commandEncoder.copyBufferToBuffer(ssboOutputs[1], 10666665 * 4, gpuBuffer, 0, 10666665 * 4)
-                commandEncoder.copyBufferToBuffer(ssboOutputs[2], 10666665 * 4 * 2, gpuBuffer, 0, 10666665 * 4)
+                commandEncoder.copyBufferToBuffer(ssboOutputs[0], 0, gpuBuffer, 0,sizeOneSSbo)
+                commandEncoder.copyBufferToBuffer(ssboOutputs[1],sizeOneSSbo, gpuBuffer, 0,sizeOneSSbo)
+                commandEncoder.copyBufferToBuffer(ssboOutputs[2],sizeOneSSbo * 2, gpuBuffer, 0,sizeOneSSbo)
             }
         }
     }
