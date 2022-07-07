@@ -560,28 +560,28 @@ export class WebGPU_MC {
             let cntPoint = 0
 
             gpuBuffert1.mapAsync(0x0001, 0,sizeOneSSbo * 3).then(function () {
+                const outputData = gpuBufferToFloat32Array(gpuBuffert1);
+                pushDataToMeshs(outputData);
+            })
+
+            gpuBuffert2.mapAsync(0x0001, 0,sizeOneSSbo * 3).then(function () {
+                const outputData2 = gpuBufferToFloat32Array(gpuBuffert2);
+                pushDataToMeshs(outputData2);
+                //console.log(indexs.length)
+                
+                babylonDrawMeshes();
+
+            })
+
+            function gpuBufferToFloat32Array(gpuBuffert1: GPUBuffer){
                 const copyArrayBuffer = gpuBuffert1.getMappedRange(0,sizeOneSSbo * 3);
 
                 const data = new Uint8Array(10666665 * 4 * 3);
                 data.set(new Uint8Array(copyArrayBuffer));
                 gpuBuffert1.unmap();
-                const outputData = new Float32Array(data.buffer); // create the Float32Array for output
                 gpuBuffert1.destroy();
-                //console.log(outputData)
-
-                pushDataToMeshs(outputData);
-                //console.log(meshs)
-                // VertexData.ComputeNormals(meshs, indexs, normals);
-                // const vertexData = new VertexData();
-
-                // vertexData.positions = meshs;
-                // vertexData.indices = indexs;//每三個點給定一個Index
-                // vertexData.normals = normals;
-
-                // vertexData.applyToMesh(that.customMesh);
-                 console.log("time:", new Date().getTime() - time.getTime());
-                // that.scene.defaultMaterial.backFaceCulling = false;
-            })
+                return new Float32Array(data.buffer); // create the Float32Array for output
+            }
 
             function pushDataToMeshs(outputData: Float32Array){
                 for (let i = 0; i < outputData.length; i += 3) {
@@ -594,35 +594,23 @@ export class WebGPU_MC {
                     }
                 }
             }
-            gpuBuffert2.mapAsync(0x0001, 0,sizeOneSSbo * 3).then(function () {
-                const copyArrayBuffer2 = gpuBuffert2.getMappedRange(0,sizeOneSSbo * 3);
 
-                const data = new Uint8Array(10666665 * 4 * 3);
-                data.set(new Uint8Array(copyArrayBuffer2));
-                gpuBuffert2.unmap();
-                const outputData2 = new Float32Array(data.buffer); // create the Float32Array for output
-                gpuBuffert2.destroy();
-
-                pushDataToMeshs(outputData2);
-
-                //console.log(indexs.length)
-
-
+            function babylonDrawMeshes(){
                 VertexData.ComputeNormals(meshs, indexs, normals);
                 const vertexData = new VertexData();
-
+                
                 vertexData.positions = meshs;
                 vertexData.indices = indexs;//每三個點給定一個Index
                 vertexData.normals = normals;
-
+                
                 vertexData.applyToMesh(that.customMesh);
                 console.log("time:", new Date().getTime() - time.getTime());
                 that.scene.defaultMaterial.backFaceCulling = false;
-            })
+            }
         })
-
+        
         //requestAnimationFrame(that.render.bind(that));
-
+        
         function gCommand() {
             const commandEncoder = device.createCommandEncoder();
             const textureView = context.getCurrentTexture().createView();
