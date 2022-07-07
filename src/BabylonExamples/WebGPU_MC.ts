@@ -680,27 +680,11 @@ export class WebGPU_MC {
             computePassEncoder.dispatchWorkgroups(511, 511, 104);
             computePassEncoder.end();
 
-            // gpuBuffer2 = device.createBuffer({
-            //     mappedAtCreation: false,
-            //     size: 10666665 * 4 * 3,
-            //     usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
-            // })
-            // gpuBuffer3 = device.createBuffer({
-            //     mappedAtCreation: false,
-            //     size: 10666665 * 4 * 3,
-            //     usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
-            // })
+
             gpuBuffer2 = gBufferForCopy();
             gpuBuffer3 = gBufferForCopy();
             bindSSboOutputToBufferOfCanMap(gpuBuffer2, [that.ssboOutput,that.ssboOutput2,that.ssboOutput3])
             bindSSboOutputToBufferOfCanMap(gpuBuffer3, [that.ssboOutput4,that.ssboOutput5,that.ssboOutput6])
-            // commandEncoder.copyBufferToBuffer(that.ssboOutput, 0, gpuBuffer2, 0, 10666665 * 4)
-            // commandEncoder.copyBufferToBuffer(that.ssboOutput2, 10666665 * 4, gpuBuffer2, 0, 10666665 * 4)
-            // commandEncoder.copyBufferToBuffer(that.ssboOutput3, 10666665 * 4 * 2, gpuBuffer2, 0, 10666665 * 4)
-
-            // commandEncoder.copyBufferToBuffer(that.ssboOutput4, 0, gpuBuffer3, 0, 10666665 * 4)
-            // commandEncoder.copyBufferToBuffer(that.ssboOutput5, 10666665 * 4, gpuBuffer3, 0, 10666665 * 4)
-            // commandEncoder.copyBufferToBuffer(that.ssboOutput6, 10666665 * 4 * 2, gpuBuffer3, 0, 10666665 * 4)
 
             //setTimeout(() => {
             //const device = that.engineGPU._device;
