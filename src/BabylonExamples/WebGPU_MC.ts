@@ -569,21 +569,7 @@ export class WebGPU_MC {
                 gpuBuffert1.destroy();
                 //console.log(outputData)
 
-                // that.customMesh = new Mesh("custom", that.scene);
-                // const meshs: number[] = []
-                // const indexs: number[] = []
-                // const normals: number[] = []
-
-               
-                for (let i = 0; i < outputData.length; i += 3) {
-                    if (outputData[i] > -9998) {
-                        meshs.push(outputData[i]);
-                        meshs.push(outputData[i + 1]);
-                        meshs.push(outputData[i + 2]);
-                        indexs.push(cntPoint);
-                        cntPoint++;
-                    }
-                }
+                pushDataToMeshs(outputData);
                 //console.log(meshs)
                 // VertexData.ComputeNormals(meshs, indexs, normals);
                 // const vertexData = new VertexData();
@@ -597,6 +583,17 @@ export class WebGPU_MC {
                 // that.scene.defaultMaterial.backFaceCulling = false;
             })
 
+            function pushDataToMeshs(outputData: Float32Array){
+                for (let i = 0; i < outputData.length; i += 3) {
+                    if (outputData[i] > -9998) {
+                        meshs.push(outputData[i]);
+                        meshs.push(outputData[i + 1]);
+                        meshs.push(outputData[i + 2]);
+                        indexs.push(cntPoint);
+                        cntPoint++;
+                    }
+                }
+            }
             gpuBuffert2.mapAsync(0x0001, 0,sizeOneSSbo * 3).then(function () {
                 const copyArrayBuffer2 = gpuBuffert2.getMappedRange(0,sizeOneSSbo * 3);
 
@@ -606,17 +603,9 @@ export class WebGPU_MC {
                 const outputData2 = new Float32Array(data.buffer); // create the Float32Array for output
                 gpuBuffert2.destroy();
 
-                for (let i = 0; i < outputData2.length; i += 3) {
-                    if (outputData2[i] > -9998) {
-                        meshs.push(outputData2[i]);
-                        meshs.push(outputData2[i + 1]);
-                        meshs.push(outputData2[i + 2]);
-                        indexs.push(cntPoint);
-                        cntPoint++;
-                    }
-                }
+                pushDataToMeshs(outputData2);
 
-                console.log(indexs.length)
+                //console.log(indexs.length)
 
 
                 VertexData.ComputeNormals(meshs, indexs, normals);
@@ -681,42 +670,12 @@ export class WebGPU_MC {
             computePassEncoder.dispatchWorkgroups(511, 511, 104);
             computePassEncoder.end();
 
-
             gpuBuffer2 = gBufferForCopy();
             gpuBuffer3 = gBufferForCopy();
             bindSSboOutputToBufferOfCanMap(gpuBuffer2, [that.ssboOutput,that.ssboOutput2,that.ssboOutput3])
             bindSSboOutputToBufferOfCanMap(gpuBuffer3, [that.ssboOutput4,that.ssboOutput5,that.ssboOutput6])
 
-            //setTimeout(() => {
-            //const device = that.engineGPU._device;
-            // const gpuBuffer = device.createBuffer({
-            //     mappedAtCreation: false,
-            //     size:sizeOneSSbo,
-            //     usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
-            // })
-            // commandEncoder.copyBufferToBuffer(that.ssboOutput, 0, gpuBuffer, 0,sizeOneSSbo)
-
-            // gpuBuffer.mapAsync(0x0001, 0,sizeOneSSbo).then(function () {
-            //     const copyArrayBuffer = gpuBuffer.getMappedRange(0,sizeOneSSbo);
-
-            //     const data = new Uint8Array(10666665 * 4);
-
-            //     data.set(new Uint8Array(copyArrayBuffer));
-
-
-            //     gpuBuffer.unmap();
-            //     gpuBuffer.destroy();
-            //     console.log(data)
-            //     console.log(new Float32Array(data))
-            // })
-
-            // }, 5000);
-
-
-            // commandEncoder.copyBufferToBuffer(that.ssboOutput, 0, that.ssboTemp, 0, 6 * 4)
-
-
-
+           
             // const passEncoder = commandEncoder.beginRenderPass(renderPassDescriptor);
             // if (that.pipeline != undefined) {
             //     console.log(that.pipeline)
