@@ -33,13 +33,13 @@ import { Float16Array } from "@petamoriken/float16";
 import { pbrVertexShader } from "babylonjs/Shaders/pbr.vertex";
 import { getCsSource } from "./getCS";
 import { triTable } from "./triTable";
-import { sizeOneSSbo } from "./globalVariables";
+import { sizeOneSSbo, threshold } from "./globalVariables";
 
 
 const AllDicomPixelData: Int16Array[] = []
 //const AllDicomPixelData: Float32Array[] = []
 
-const threshold = 150;
+
 let gpuBuffer2: GPUBuffer
 let gpuBuffer3: GPUBuffer
 let SurfaceVoxels: Voxel[][]
@@ -47,6 +47,8 @@ let SurfaceVoxels: Voxel[][]
 const surfaceNumber: number[] = new Array(105)
 
 const bufs = new ArrayBuffer(512 * 512 * 128 * 4)
+
+let data = new ArrayBuffer(512 * 512 * 6 * 4)
 
 declare enum GPUShaderStage {
 
@@ -281,12 +283,13 @@ export class WebGPU_MC {
                     if (AllDicomPixelData.length == 6) {
                         for (let i = 0; i < AllDicomPixelData.length; i++) {
                             const a1 = AllDicomPixelData[i];
-                            const dst1 = new DataView(bufs, 512 * 512 * i * 4, 512 * 512 * 4)
 
+                            const dst1 = new DataView(bufs, 512 * 512 * i * 4, 512 * 512 * 4)
                             for (let j = 0; j < a1.length; j++) {
                                 const a2 = a1[j];
                                 dst1.setFloat32(j * 4, a2, true);
                             }
+                            data = bufs;
                         }
                         //console.log("bufs float32 array", new Float32Array(bufs));
 
@@ -295,34 +298,30 @@ export class WebGPU_MC {
                         ////compute Shader Uniform 定義
                         const paramsBuffer = [threshold, pixelSpace, sliceThickness]
                         const paramsBufferArray = new Float32Array(paramsBuffer)
-
                         const uniformBuffer = device.createBuffer({
                             mappedAtCreation: false,
                             size: 3 * 4,
                             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
                         })
-
                         const triTableBuffer = device.createBuffer({
                             mappedAtCreation: false,
                             size: triTable.byteLength,
                             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
                         })
-
-                        device.queue.writeBuffer(
+                        device.queue.writeBuffer(////uniform Params
                             uniformBuffer, // 傳給
                             0,
                             paramsBufferArray, // Sourse ArrayBuffer
                             0
                         )
-
-                        device.queue.writeBuffer(
+                        device.queue.writeBuffer(////uniform triTable
                             triTableBuffer,
                             0,
                             triTable,
                             0
                         )
 
-                        const data = bufs;
+
 
                         const ssboInput = device.createBuffer({
                             mappedAtCreation: false,
@@ -516,7 +515,7 @@ export class WebGPU_MC {
 
                             layout: pipeLineLayout
                         });
-                        that.render()
+                        that.render();
                     }
                 });
             }
@@ -529,15 +528,7 @@ export class WebGPU_MC {
         return scene;
     }
 
-    checkComputeShadersSupported(engine: Engine, scene: Scene) {
-        // engine.getCaps().supportComputeShaders
-        const supportCS = engine.getCaps().supportComputeShaders;
 
-        if (supportCS) {
-            return true;
-        }
-        return false;
-    }
     render() {
         // eslint-disable-next-line @typescript-eslint/no-this-alias
         const that = this
@@ -550,7 +541,7 @@ export class WebGPU_MC {
 
         console.log("time:", new Date().getTime() - time.getTime());
         this.engineGPU._device.queue.submit(commandBuf)
-        device.queue.onSubmittedWorkDone().then(() => {
+        device.queue.onSubmittedWorkDone().then(async () => {
             const gpuBuffert1 = gpuBuffer2
             const gpuBuffert2 = gpuBuffer3
             that.customMesh = new Mesh("custom", that.scene);
@@ -559,22 +550,24 @@ export class WebGPU_MC {
             const normals: number[] = []
             let cntPoint = 0
 
-            gpuBuffert1.mapAsync(0x0001, 0,sizeOneSSbo * 3).then(function () {
-                const outputData = gpuBufferToFloat32Array(gpuBuffert1);
-                pushDataToMeshs(outputData);
-            })
+            
 
-            gpuBuffert2.mapAsync(0x0001, 0,sizeOneSSbo * 3).then(function () {
-                const outputData2 = gpuBufferToFloat32Array(gpuBuffert2);
-                pushDataToMeshs(outputData2);
-                //console.log(indexs.length)
-                
-                babylonDrawMeshes();
+            const tasks = [
+                mapAndPushDataToMeshesAsync(gpuBuffert1),
+                mapAndPushDataToMeshesAsync(gpuBuffert2)
 
-            })
+            ]
+            await Promise.all(tasks);
+            myBabylonDrawMeshes();
+            async function mapAndPushDataToMeshesAsync(gpuBuffer: GPUBuffer) {
+                await gpuBuffer.mapAsync(0x0001, 0, sizeOneSSbo * 3).then(function () {
+                    const outputData = gpuBufferToFloat32Array(gpuBuffer);
+                    pushDataToMeshs(outputData);
+                })
+            }
 
-            function gpuBufferToFloat32Array(gpuBuffert1: GPUBuffer){
-                const copyArrayBuffer = gpuBuffert1.getMappedRange(0,sizeOneSSbo * 3);
+            function gpuBufferToFloat32Array(gpuBuffert1: GPUBuffer) {
+                const copyArrayBuffer = gpuBuffert1.getMappedRange(0, sizeOneSSbo * 3);
 
                 const data = new Uint8Array(10666665 * 4 * 3);
                 data.set(new Uint8Array(copyArrayBuffer));
@@ -582,8 +575,7 @@ export class WebGPU_MC {
                 gpuBuffert1.destroy();
                 return new Float32Array(data.buffer); // create the Float32Array for output
             }
-
-            function pushDataToMeshs(outputData: Float32Array){
+            function pushDataToMeshs(outputData: Float32Array) {
                 for (let i = 0; i < outputData.length; i += 3) {
                     if (outputData[i] > -9998) {
                         meshs.push(outputData[i]);
@@ -594,23 +586,22 @@ export class WebGPU_MC {
                     }
                 }
             }
-
-            function babylonDrawMeshes(){
+            function myBabylonDrawMeshes() {
                 VertexData.ComputeNormals(meshs, indexs, normals);
                 const vertexData = new VertexData();
-                
+
                 vertexData.positions = meshs;
                 vertexData.indices = indexs;//每三個點給定一個Index
                 vertexData.normals = normals;
-                
+
                 vertexData.applyToMesh(that.customMesh);
                 console.log("time:", new Date().getTime() - time.getTime());
                 that.scene.defaultMaterial.backFaceCulling = false;
             }
         })
-        
+
         //requestAnimationFrame(that.render.bind(that));
-        
+
         function gCommand() {
             const commandEncoder = device.createCommandEncoder();
             const textureView = context.getCurrentTexture().createView();
@@ -660,10 +651,10 @@ export class WebGPU_MC {
 
             gpuBuffer2 = gBufferForCopy();
             gpuBuffer3 = gBufferForCopy();
-            bindSSboOutputToBufferOfCanMap(gpuBuffer2, [that.ssboOutput,that.ssboOutput2,that.ssboOutput3])
-            bindSSboOutputToBufferOfCanMap(gpuBuffer3, [that.ssboOutput4,that.ssboOutput5,that.ssboOutput6])
+            bindSSboOutputToBufferOfCanMap(gpuBuffer2, [that.ssboOutput, that.ssboOutput2, that.ssboOutput3])
+            bindSSboOutputToBufferOfCanMap(gpuBuffer3, [that.ssboOutput4, that.ssboOutput5, that.ssboOutput6])
 
-           
+
             // const passEncoder = commandEncoder.beginRenderPass(renderPassDescriptor);
             // if (that.pipeline != undefined) {
             //     console.log(that.pipeline)
@@ -677,21 +668,30 @@ export class WebGPU_MC {
             // }
             // passEncoder.draw(3 * 10666665, 1, 0, 0);
             // passEncoder.end();
-           
+
             return [commandEncoder.finish()]
-            function gBufferForCopy(){
+            function gBufferForCopy() {
                 return device.createBuffer({
                     mappedAtCreation: false,
-                    size: sizeOneSSbo * 3 ,
+                    size: sizeOneSSbo * 3,
                     usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
                 })
             }
-            function bindSSboOutputToBufferOfCanMap(gpuBuffer:GPUBuffer,ssboOutputs: GPUBuffer[]){
-                commandEncoder.copyBufferToBuffer(ssboOutputs[0], 0, gpuBuffer, 0,sizeOneSSbo)
-                commandEncoder.copyBufferToBuffer(ssboOutputs[1],sizeOneSSbo, gpuBuffer, 0,sizeOneSSbo)
-                commandEncoder.copyBufferToBuffer(ssboOutputs[2],sizeOneSSbo * 2, gpuBuffer, 0,sizeOneSSbo)
+            function bindSSboOutputToBufferOfCanMap(gpuBuffer: GPUBuffer, ssboOutputs: GPUBuffer[]) {
+                commandEncoder.copyBufferToBuffer(ssboOutputs[0], 0, gpuBuffer, 0, sizeOneSSbo)
+                commandEncoder.copyBufferToBuffer(ssboOutputs[1], sizeOneSSbo, gpuBuffer, 0, sizeOneSSbo)
+                commandEncoder.copyBufferToBuffer(ssboOutputs[2], sizeOneSSbo * 2, gpuBuffer, 0, sizeOneSSbo)
             }
         }
+    }
+    checkComputeShadersSupported(engine: Engine, scene: Scene) {
+        // engine.getCaps().supportComputeShaders
+        const supportCS = engine.getCaps().supportComputeShaders;
+
+        if (supportCS) {
+            return true;
+        }
+        return false;
     }
 }
 
