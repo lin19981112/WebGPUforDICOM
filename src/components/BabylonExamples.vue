@@ -17,6 +17,7 @@ import { BasicScene } from '@/BabylonExamples/BasicScene';
 import { WebGPUtest } from '@/BabylonExamples/WebGPUtest';
 import { WebGPU_MC } from '@/BabylonExamples/WebGPU_MC';
 import { WebGPUMCtest } from '@/BabylonExamples/WebGPUMCtest';
+import Enumerable from 'linq';
 
 export default defineComponent({
   
@@ -24,14 +25,20 @@ export default defineComponent({
 
   mounted(){
 
-    // const re = []
-    // for (let i = 0; i < 100; i++) {
-      
-    //   const aaa = new ArrayBuffer(500000000);
-    //   re.push(aaa)
-    //   console.log(i)
-      
-    // }
+    // const re2 = []
+    // Enumerable.range(0,1000).forEach(j=>{
+    //   const re:any[] = []
+    //   for (let i = 0; i < 50; i++) {
+        
+    //     const aaa = new Float32Array(31999995/32);
+    //     Enumerable.from(aaa).forEach(a1=>re.push(a1));
+    //     console.log(i)
+    //   }
+    //   re2.push(re)
+    //   console.log(j)
+    // })
+
+  
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const canvas = document.querySelector("canvas")!;
     //new BasicScene(canvas)

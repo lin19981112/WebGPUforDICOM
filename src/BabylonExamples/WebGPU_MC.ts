@@ -45,14 +45,14 @@ let gpuBuffer3: GPUBuffer
 
 //const surfaceNumber: number[] = new Array(105)
 
-export class DeviceSigleton{
+export class DeviceSigleton {
     private _device?: GPUDevice
     static s: DeviceSigleton = new DeviceSigleton();
-    setDevice(a1: GPUDevice){
+    setDevice(a1: GPUDevice) {
         this._device = a1
     }
-    getDevice(){
-        if (this._device == null){
+    getDevice() {
+        if (this._device == null) {
             throw Error('assert device not null.')
         }
         return this._device
@@ -71,18 +71,78 @@ function gArrayBuffers(cntLevel: number) {
 }
 function gSSboBuffers(count: number) {
     return Enumerable.range(0, count)
-        .select( i => createSSboInputs(i))
+        .select(i => createSSboInputs(i))
         .toArray();
 
-        
-        function createSSboInputs(i: number) {
-            const device = DeviceSigleton.s.getDevice();
-            return device.createBuffer({
-                mappedAtCreation: false,
-                size: datas[i].byteLength,
-                usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
-            });
-        }
+
+    function createSSboInputs(i: number) {
+        const device = DeviceSigleton.s.getDevice();
+        return device.createBuffer({
+            mappedAtCreation: false,
+            size: datas[i].byteLength,
+            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
+        });
+    }
+}
+function gBindGroup(
+    count: number,
+    computeBindGroupLayout: GPUBindGroupLayout,
+    ssboInputs: GPUBuffer[],
+    ssboOutput: GPUBuffer,
+    uniformBuffer: GPUBuffer,
+    triTableBuffer: GPUBuffer,
+    ssboOutput2: GPUBuffer,
+    ssboOutput3: GPUBuffer,
+    ssboOutput4: GPUBuffer,
+    ssboOutput5: GPUBuffer,
+    ssboOutput6: GPUBuffer) {
+    return Enumerable.range(0, count)
+        .select(i => createBindGroups(i))
+        .toArray();
+    function createBindGroups(i: number) {
+        const device = DeviceSigleton.s.getDevice();
+        return device.createBindGroup({
+            layout: computeBindGroupLayout,
+            entries: [
+                {
+                    binding: 0,
+                    resource: { buffer: ssboInputs[i] }
+                },
+                {
+                    binding: 1,
+                    resource: { buffer: ssboOutput }
+                },
+                {
+                    binding: 2,
+                    resource: { buffer: uniformBuffer }
+                },
+                {
+                    binding: 3,
+                    resource: { buffer: triTableBuffer }
+                },
+                {
+                    binding: 4,
+                    resource: { buffer: ssboOutput2 }
+                },
+                {
+                    binding: 5,
+                    resource: { buffer: ssboOutput3 }
+                },
+                {
+                    binding: 6,
+                    resource: { buffer: ssboOutput4 }
+                },
+                {
+                    binding: 7,
+                    resource: { buffer: ssboOutput5 }
+                },
+                {
+                    binding: 8,
+                    resource: { buffer: ssboOutput6 }
+                }
+            ]
+        });
+    }
 }
 declare enum GPUShaderStage {
 
@@ -128,6 +188,7 @@ export class WebGPU_MC {
 
     bindGroup!: GPUBindGroup;
     computeBindGroup!: GPUBindGroup;
+    computeBindGroups!: GPUBindGroup[];
 
     ssboOutput!: GPUBuffer;
     ssboOutput2!: GPUBuffer;
@@ -339,7 +400,7 @@ export class WebGPU_MC {
                             datas[i] = devideAllDataToSingleBuf(i);
                         }
                         //console.log("bufs float32 array", new Float32Array(data));
-                        
+
                         ////compute Shader Uniform 定義
                         const paramsBuffer = [threshold, pixelSpace, sliceThickness]
                         const paramsBufferArray = new Float32Array(paramsBuffer)
@@ -365,9 +426,9 @@ export class WebGPU_MC {
                             triTable,
                             0
                         )
-                        
+
                         const ssboInputs = gSSboBuffers(datas.length);
-                        for (let i = 0; i < datas.length; i++) {
+                        for (let i = 0; i < datas.length; i++) {////寫入所有data至對應ssboinput
                             //ssboInput[] = createSSboInputs(0);
                             device.queue.writeBuffer(ssboInputs[i], 0, datas[i], 0);
                         }
@@ -457,49 +518,11 @@ export class WebGPU_MC {
                                 }
                             ]
                         });
-                        const computeBindGroup = device.createBindGroup({
-                            layout: computeBindGroupLayout,
-                            entries: [
-                                {
-                                    binding: 0,
-                                    resource: { buffer: ssboInputs[0] }
-                                },
-                                {
-                                    binding: 1,
-                                    resource: { buffer: ssboOutput }
-                                },
-                                {
-                                    binding: 2,
-                                    resource: { buffer: uniformBuffer }
-                                },
-                                {
-                                    binding: 3,
-                                    resource: { buffer: triTableBuffer }
-                                },
-                                {
-                                    binding: 4,
-                                    resource: { buffer: ssboOutput2 }
-                                },
-                                {
-                                    binding: 5,
-                                    resource: { buffer: ssboOutput3 }
-                                },
-                                {
-                                    binding: 6,
-                                    resource: { buffer: ssboOutput4 }
-                                },
-                                {
-                                    binding: 7,
-                                    resource: { buffer: ssboOutput5 }
-                                },
-                                {
-                                    binding: 8,
-                                    resource: { buffer: ssboOutput6 }
-                                }
 
-                            ]
-                        });
-                        that.computeBindGroup = computeBindGroup;
+                        const computeBindGroups = gBindGroup(datas.length, computeBindGroupLayout, ssboInputs, ssboOutput, uniformBuffer, triTableBuffer, ssboOutput2,ssboOutput3,ssboOutput4,ssboOutput5,ssboOutput6);
+                        
+                        that.computeBindGroups = computeBindGroups;
+
                         const computePipeLineLayout = device.createPipelineLayout({
                             bindGroupLayouts: [computeBindGroupLayout]
                         })
@@ -564,13 +587,13 @@ export class WebGPU_MC {
                     }
                     return;// promise then
 
-                    function createSSboInputs(i: number) {
-                        return device.createBuffer({
-                            mappedAtCreation: false,
-                            size: datas[i].byteLength,
-                            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
-                        });
-                    }
+                    // function createSSboInputs(i: number) {
+                    //     return device.createBuffer({
+                    //         mappedAtCreation: false,
+                    //         size: datas[i].byteLength,
+                    //         usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
+                    //     });
+                    // }
 
                     // function putDataIntoSSboInput(ssboInputNumber: number) {
                     //     const ssboInput = createSSboInputs(ssboInputNumber);
@@ -601,6 +624,7 @@ export class WebGPU_MC {
         console.log("time:", new Date().getTime() - time.getTime());
         this.engineGPU._device.queue.submit(commandBuf)
         device.queue.onSubmittedWorkDone().then(async () => {
+            console.log("done")
             const gpuBuffert1 = gpuBuffer2
             const gpuBuffert2 = gpuBuffer3
             that.customMesh = new Mesh("custom", that.scene);
@@ -609,28 +633,32 @@ export class WebGPU_MC {
             const normals: number[] = []
             let cntPoint = 0
 
-            const tasks = [
-                mapAndPushDataToMeshesAsync(gpuBuffert1),
-                mapAndPushDataToMeshesAsync(gpuBuffert2)
-            ]
-            await Promise.all(tasks);
+            await mapAndPushDataToMeshesAsync(gpuBuffert1)
+            await mapAndPushDataToMeshesAsync(gpuBuffert2)
+            // const tasks = [
+            //     mapAndPushDataToMeshesAsync(gpuBuffert1),
+            //     mapAndPushDataToMeshesAsync(gpuBuffert2)
+            // ]
+            // await Promise.all(tasks);
             myBabylonDrawMeshes();
 
             async function mapAndPushDataToMeshesAsync(gpuBuffer: GPUBuffer) {
                 await gpuBuffer.mapAsync(0x0001, 0, sizeOneSSbo * 3).then(function () {
                     const outputData = gpuBufferToFloat32Array(gpuBuffer);
+                    console.log(outputData);
                     pushDataToMeshs(outputData);
                 })
             }
             function gpuBufferToFloat32Array(gpuBuffert1: GPUBuffer) {
                 const copyArrayBuffer = gpuBuffert1.getMappedRange(0, sizeOneSSbo * 3);
-
-                const data = new Uint8Array(10666665 * 4 * 3);
+                
+                const data = new Uint8Array(sizeOneSSbo * 3);
                 data.set(new Uint8Array(copyArrayBuffer));
                 gpuBuffert1.unmap();
                 gpuBuffert1.destroy();
                 return new Float32Array(data.buffer); // create the Float32Array for output
             }
+
             function pushDataToMeshs(outputData: Float32Array) {
                 for (let i = 0; i < outputData.length; i += 3) {
                     if (outputData[i] > -9998) {
@@ -700,16 +728,16 @@ export class WebGPU_MC {
             const ComputePassDescriptor: GPUComputePassDescriptor = {}
 
             const computePassEncoder = commandEncoder.beginComputePass(ComputePassDescriptor);
-            computePassEncoder.setBindGroup(0, that.computeBindGroup);
+            //console.log(that.computeBindGroup)
+            computePassEncoder.setBindGroup(0, that.computeBindGroups[0]);
             computePassEncoder.setPipeline(that.computePipeline);
-            computePassEncoder.dispatchWorkgroups(511, 511, 104);
+            computePassEncoder.dispatchWorkgroups(511, 511, 5);
             computePassEncoder.end();
 
             gpuBuffer2 = gBufferForCopy();
             gpuBuffer3 = gBufferForCopy();
             bindSSboOutputToBufferOfCanMap(gpuBuffer2, [that.ssboOutput, that.ssboOutput2, that.ssboOutput3])
             bindSSboOutputToBufferOfCanMap(gpuBuffer3, [that.ssboOutput4, that.ssboOutput5, that.ssboOutput6])
-
 
             // const passEncoder = commandEncoder.beginRenderPass(renderPassDescriptor);
             // if (that.pipeline != undefined) {
@@ -743,7 +771,6 @@ export class WebGPU_MC {
     checkComputeShadersSupported(engine: Engine, scene: Scene) {
         // engine.getCaps().supportComputeShaders
         const supportCS = engine.getCaps().supportComputeShaders;
-
         if (supportCS) {
             return true;
         }

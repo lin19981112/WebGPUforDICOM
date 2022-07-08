@@ -11,19 +11,23 @@ function computeMC() {
         pixelSpace:f32,
         sliceThickness:f32,
     };
-    let seg = 10666665;
-    
-        @group(0) @binding(0) var<storage, read_write> data : array<f32>;
-        @group(0) @binding(1) var<storage, write> ssboOutput : array<f32>;
-        @group(0) @binding(2) var<uniform> params : Params;
-        @group(0) @binding(3) var<storage> triTable: array<i32>;
-        @group(0) @binding(4) var<storage, write> ssboOutput2 : array<f32>;
-        @group(0) @binding(5) var<storage, write> ssboOutput3 : array<f32>;
-        @group(0) @binding(6) var<storage, write> ssboOutput4 : array<f32>;
-        @group(0) @binding(7) var<storage, write> ssboOutput5 : array<f32>;
-        @group(0) @binding(8) var<storage, write> ssboOutput6 : array<f32>;
-        @compute @workgroup_size(1,1,1)
 
+    let seg = 10666665;
+    let dimX: u32 = 512;
+    let dimY: u32 = 512;
+    let dimZ: u32 = 6;
+    
+    @group(0) @binding(0) var<storage, read_write> data : array<f32>;
+    @group(0) @binding(1) var<storage, write> ssboOutput : array<f32>;
+    @group(0) @binding(2) var<uniform> params : Params;
+    @group(0) @binding(3) var<storage> triTable: array<i32>;
+    @group(0) @binding(4) var<storage, write> ssboOutput2 : array<f32>;
+    @group(0) @binding(5) var<storage, write> ssboOutput3 : array<f32>;
+    @group(0) @binding(6) var<storage, write> ssboOutput4 : array<f32>;
+    @group(0) @binding(7) var<storage, write> ssboOutput5 : array<f32>;
+    @group(0) @binding(8) var<storage, write> ssboOutput6 : array<f32>;
+    @compute @workgroup_size(1,1,1)
+    
     fn main(@builtin(global_invocation_id) global_id : vec3<u32>) {
         //let idx = global_id.x + global_id.y * 511 + global_id.z * 511 * 8;
         var index = global_id;
@@ -32,7 +36,7 @@ function computeMC() {
         //ssboOutput[3 * idx] = params.sliceThickness ;
         //return;
         //return;
-        if (global_id.x > 511 || global_id.y > 511 || global_id.z > 104) {
+        if (global_id.x > (dimX - 1) || global_id.y > (dimY - 1) || global_id.z > (dimZ - 1)) {
             return;
         }
 
@@ -155,10 +159,10 @@ function computeMC() {
     }
 
     fn globe3DTo1DIndex(globalx: u32, globaly: u32, globalz: u32) -> i32{
-        return i32(globalx + globaly * 512 + globalz * 512 * 105);
+        return i32(globalx + globaly * dimX + globalz * dimX  * dimY);
     }
     fn globe3DTo1DIndexVoxel(globalx: u32, globaly: u32, globalz: u32) -> i32{
-        return i32(globalx + globaly * 511 + globalz * 511 * 104);
+        return i32(globalx + globaly * (dimX - 1) + globalz * (dimX - 1) * (dimY - 1));
     }
 
     fn createVertexs(voxelIndex: vec3<u32>, voxelData: array<f32, 8>) ->  array<vec3<f32>, 12>{
