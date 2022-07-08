@@ -41,14 +41,15 @@ const AllDicomPixelData: Int16Array[] = []
 
 let gpuBuffer2: GPUBuffer
 let gpuBuffer3: GPUBuffer
-let SurfaceVoxels: Voxel[][]
+//let SurfaceVoxels: Voxel[][]
 
-const surfaceNumber: number[] = new Array(105)
+//const surfaceNumber: number[] = new Array(105)
 
 
 
 //let data = new ArrayBuffer(512 * 512 * 6 * 4)
- const datas = gArrayBuffers(105);
+const datas = gArrayBuffers(105);
+
 function gArrayBuffers(cntLevel:number){
     const cnt2 = Math.ceil( cntLevel / 6) ;
     return Enumerable.range(0,cnt2)
@@ -56,7 +57,6 @@ function gArrayBuffers(cntLevel:number){
         .toArray();
 
 }
-
 declare enum GPUShaderStage {
 
     VERTEX = 0x1,
@@ -281,6 +281,7 @@ export class WebGPU_MC {
                 const imageInfo = decoder?.image;
                 const pixelDataPromise = decoder!.getFrame2() // promise<>
                 pixelDataPromise.then(async pixelData => {
+                    const device = that.engineGPU._device   ////device = GPUDevice
                     const buffer = new Int16Array(pixelData?.buffer, pixelData.byteOffset, pixelData.byteLength / 2);
                     pixelSpace = Number(image?.pixelSpacing[0])
                     sliceThickness = Number(image?.sliceThickness)
@@ -290,7 +291,11 @@ export class WebGPU_MC {
                     function devideAllDataToSingleBuf(dataNumber: number){
                         const buf = new ArrayBuffer(512 * 512 * 128 * 4)
                         for (let i = 0; i < 6; i++) {
-                            const a1 = AllDicomPixelData[dataNumber * 6 + i];
+                            let dataCount = dataNumber * 6 + i
+                            if (dataCount > 104) {
+                                dataCount = 104;
+                            }
+                            const a1 = AllDicomPixelData[dataCount];
                             const dst1 = new DataView(buf, 512 * 512 * i * 4, 512 * 512 * 4)
                             for (let j = 0; j < a1.length; j++) {
                                 const a2 = a1[j];
@@ -299,14 +304,15 @@ export class WebGPU_MC {
                         }
                         return buf;
                     }
-
+                    
                     if (AllDicomPixelData.length == 105) {
                         
-                        datas[0] = devideAllDataToSingleBuf(0);
-
+                        for (let i = 0; i < Math.ceil(105/6); i++) {
+                            datas[i] = devideAllDataToSingleBuf(i);
+                        }
                         //console.log("bufs float32 array", new Float32Array(data));
 
-                        const device = that.engineGPU._device   ////device = GPUDevice
+                        
 
                         ////compute Shader Uniform 定義
                         const paramsBuffer = [threshold, pixelSpace, sliceThickness]
@@ -334,14 +340,13 @@ export class WebGPU_MC {
                             0
                         )
 
-
-
-                        const ssboInput = device.createBuffer({
-                            mappedAtCreation: false,
-                            size: datas[0].byteLength,
-                            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
-                        });
-                        ////data update
+                        const ssboInput = createSSboInputs(0);
+                        // const ssboInput = device.createBuffer({
+                        //     mappedAtCreation: false,
+                        //     size: datas[0].byteLength,
+                        //     usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
+                        // });
+                        //data update
                         device.queue.writeBuffer(ssboInput, 0, datas[0], 0)
                         //console.log("input", data)
 
@@ -530,7 +535,16 @@ export class WebGPU_MC {
                         });
                         that.render();
                     }
-                });
+                    return ;// promise then
+
+                    function createSSboInputs(i: number){
+                        return device.createBuffer({
+                            mappedAtCreation: false,
+                            size: datas[i].byteLength,
+                            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
+                        });
+                    }
+                }); // promise then
             }
             reader.readAsArrayBuffer(file)
             return true;
