@@ -37,8 +37,6 @@ import { sizeOneSSbo, threshold } from "./globalVariables";
 
 
 const AllDicomPixelData: Int16Array[] = []
-//const AllDicomPixelData: Float32Array[] = []
-
 
 let gpuBuffer2: GPUBuffer
 let gpuBuffer3: GPUBuffer
@@ -46,7 +44,7 @@ let SurfaceVoxels: Voxel[][]
 
 const surfaceNumber: number[] = new Array(105)
 
-const bufs = new ArrayBuffer(512 * 512 * 128 * 4)
+
 
 let data = new ArrayBuffer(512 * 512 * 6 * 4)
 
@@ -280,18 +278,24 @@ export class WebGPU_MC {
                     Normalize(buffer);
                     AllDicomPixelData.push(buffer);
 
-                    if (AllDicomPixelData.length == 6) {
-                        for (let i = 0; i < AllDicomPixelData.length; i++) {
-                            const a1 = AllDicomPixelData[i];
-
-                            const dst1 = new DataView(bufs, 512 * 512 * i * 4, 512 * 512 * 4)
+                    function devideAllDataToSingleBuf(dataNumber: number){
+                        const buf = new ArrayBuffer(512 * 512 * 128 * 4)
+                        for (let i = 0; i < 6; i++) {
+                            const a1 = AllDicomPixelData[dataNumber + i];
+                            const dst1 = new DataView(buf, 512 * 512 * i * 4, 512 * 512 * 4)
                             for (let j = 0; j < a1.length; j++) {
                                 const a2 = a1[j];
                                 dst1.setFloat32(j * 4, a2, true);
                             }
-                            data = bufs;
                         }
-                        //console.log("bufs float32 array", new Float32Array(bufs));
+                        return buf;
+                    }
+
+                    if (AllDicomPixelData.length == 105) {
+                        
+                        data = devideAllDataToSingleBuf(6);
+                        
+                        //console.log("bufs float32 array", new Float32Array(data));
 
                         const device = that.engineGPU._device   ////device = GPUDevice
 
@@ -550,22 +554,19 @@ export class WebGPU_MC {
             const normals: number[] = []
             let cntPoint = 0
 
-            
-
             const tasks = [
                 mapAndPushDataToMeshesAsync(gpuBuffert1),
                 mapAndPushDataToMeshesAsync(gpuBuffert2)
-
             ]
             await Promise.all(tasks);
             myBabylonDrawMeshes();
+
             async function mapAndPushDataToMeshesAsync(gpuBuffer: GPUBuffer) {
                 await gpuBuffer.mapAsync(0x0001, 0, sizeOneSSbo * 3).then(function () {
                     const outputData = gpuBufferToFloat32Array(gpuBuffer);
                     pushDataToMeshs(outputData);
                 })
             }
-
             function gpuBufferToFloat32Array(gpuBuffert1: GPUBuffer) {
                 const copyArrayBuffer = gpuBuffert1.getMappedRange(0, sizeOneSSbo * 3);
 
