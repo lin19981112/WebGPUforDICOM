@@ -35,6 +35,7 @@ import { getCsSource } from "./getCS";
 import { triTable } from "./triTable";
 import { sizeOneSSbo, threshold } from "./globalVariables";
 
+import Enumerable from "linq";
 
 const AllDicomPixelData: Int16Array[] = []
 
@@ -46,7 +47,15 @@ const surfaceNumber: number[] = new Array(105)
 
 
 
-let data = new ArrayBuffer(512 * 512 * 6 * 4)
+//let data = new ArrayBuffer(512 * 512 * 6 * 4)
+ const datas = gArrayBuffers(105);
+function gArrayBuffers(cntLevel:number){
+    const cnt2 = Math.ceil( cntLevel / 6) ;
+    return Enumerable.range(0,cnt2)
+        .select( _a1 => new ArrayBuffer(512 * 512 * 6 * 4))
+        .toArray();
+
+}
 
 declare enum GPUShaderStage {
 
@@ -281,7 +290,7 @@ export class WebGPU_MC {
                     function devideAllDataToSingleBuf(dataNumber: number){
                         const buf = new ArrayBuffer(512 * 512 * 128 * 4)
                         for (let i = 0; i < 6; i++) {
-                            const a1 = AllDicomPixelData[dataNumber + i];
+                            const a1 = AllDicomPixelData[dataNumber * 6 + i];
                             const dst1 = new DataView(buf, 512 * 512 * i * 4, 512 * 512 * 4)
                             for (let j = 0; j < a1.length; j++) {
                                 const a2 = a1[j];
@@ -293,8 +302,8 @@ export class WebGPU_MC {
 
                     if (AllDicomPixelData.length == 105) {
                         
-                        data = devideAllDataToSingleBuf(6);
-                        
+                        datas[0] = devideAllDataToSingleBuf(0);
+
                         //console.log("bufs float32 array", new Float32Array(data));
 
                         const device = that.engineGPU._device   ////device = GPUDevice
@@ -329,11 +338,11 @@ export class WebGPU_MC {
 
                         const ssboInput = device.createBuffer({
                             mappedAtCreation: false,
-                            size: data.byteLength,
+                            size: datas[0].byteLength,
                             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
                         });
                         ////data update
-                        device.queue.writeBuffer(ssboInput, 0, data, 0)
+                        device.queue.writeBuffer(ssboInput, 0, datas[0], 0)
                         //console.log("input", data)
 
                         const ssboOutput = device.createBuffer({

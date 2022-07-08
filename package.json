@@ -15,6 +15,7 @@
     "@babylonjs/core": "^5",
     "@babylonjs/loaders": "^5.6.1",
     "@petamoriken/float16": "^3.6.3",
+    "@types/linq": "^2.2.33",
     "@webgpu/glslang": "^0.0.15",
     "@webgpu/types": "^0.1.20",
     "babylonjs": "^5.10.0",
