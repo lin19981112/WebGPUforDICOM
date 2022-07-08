@@ -45,17 +45,44 @@ let gpuBuffer3: GPUBuffer
 
 //const surfaceNumber: number[] = new Array(105)
 
+export class DeviceSigleton{
+    private _device?: GPUDevice
+    static s: DeviceSigleton = new DeviceSigleton();
+    setDevice(a1: GPUDevice){
+        this._device = a1
+    }
+    getDevice(){
+        if (this._device == null){
+            throw Error('assert device not null.')
+        }
+        return this._device
+    }
+}
 
 
 //let data = new ArrayBuffer(512 * 512 * 6 * 4)
 const datas = gArrayBuffers(105);
 
-function gArrayBuffers(cntLevel:number){
-    const cnt2 = Math.ceil( cntLevel / 6) ;
-    return Enumerable.range(0,cnt2)
-        .select( _a1 => new ArrayBuffer(512 * 512 * 6 * 4))
+function gArrayBuffers(cntLevel: number) {
+    const cnt2 = Math.ceil(cntLevel / 6);
+    return Enumerable.range(0, cnt2)
+        .select(_a1 => new ArrayBuffer(512 * 512 * 6 * 4))
+        .toArray();
+}
+function gSSboBuffers(count: number) {
+    return Enumerable.range(0, count)
+        .select( i => createSSboInputs(i))
         .toArray();
 
+        
+        function createSSboInputs(i: number) {
+            const device = DeviceSigleton.s.getDevice();
+            return device.createBuffer({
+                mappedAtCreation: false,
+                size: datas[i].byteLength,
+                usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
+            });
+        }
 }
 declare enum GPUShaderStage {
 
@@ -64,16 +91,16 @@ declare enum GPUShaderStage {
     COMPUTE = 0x4
 }
 declare enum GPUBufferUsage {
-    MAP_READ = 0x0001,      // 映射并用来独取
-    MAP_WRITE = 0x0002,     // 映射并用来写入
-    COPY_SRC = 0x0004,      // 可以作为拷贝源
-    COPY_DST = 0x0008,      // 可以作为拷贝目标
-    INDEX = 0x0010,         // 索引缓存
-    VERTEX = 0x0020,        // 顶点缓存
-    UNIFORM = 0x0040,       // Uniform 缓存
-    STORAGE = 0x0080,       // 仅存储型缓存
-    INDIRECT = 0x0100,      // 间接使用
-    QUERY_RESOLVE = 0x0200  // 用于查询
+    MAP_READ = 0x0001,      // 映射並用來獨取
+    MAP_WRITE = 0x0002,     // 映射並用來寫入
+    COPY_SRC = 0x0004,      // 可以作為拷貝源
+    COPY_DST = 0x0008,      // 可以作為拷貝目標
+    INDEX = 0x0010,         // 索引緩存
+    VERTEX = 0x0020,        // 頂點緩存
+    UNIFORM = 0x0040,       // Uniform 緩存
+    STORAGE = 0x0080,       // 僅存儲型緩存
+    INDIRECT = 0x0100,      // 間接使用
+    QUERY_RESOLVE = 0x0200  // 用於查詢
 }
 declare enum GPUTextureUsage {
     COPY_SRC = 0x01,
@@ -115,6 +142,7 @@ export class WebGPU_MC {
         engine.initAsync().then(() => {
             this.engine = engine
             this.engineGPU = engine
+            DeviceSigleton.s.setDevice(engine._device);
             this.context = canvas.getContext("webgpu") as unknown as GPUCanvasContext
             this.scene = this.CreateScene();
             engine.runRenderLoop(() => {
@@ -288,7 +316,7 @@ export class WebGPU_MC {
                     Normalize(buffer);
                     AllDicomPixelData.push(buffer);
 
-                    function devideAllDataToSingleBuf(dataNumber: number){
+                    function devideAllDataToSingleBuf(dataNumber: number) {
                         const buf = new ArrayBuffer(512 * 512 * 128 * 4)
                         for (let i = 0; i < 6; i++) {
                             let dataCount = dataNumber * 6 + i
@@ -304,16 +332,14 @@ export class WebGPU_MC {
                         }
                         return buf;
                     }
-                    
+
                     if (AllDicomPixelData.length == 105) {
-                        
-                        for (let i = 0; i < Math.ceil(105/6); i++) {
+
+                        for (let i = 0; i < Math.ceil(105 / 6); i++) {////分割dicom data
                             datas[i] = devideAllDataToSingleBuf(i);
                         }
                         //console.log("bufs float32 array", new Float32Array(data));
-
                         
-
                         ////compute Shader Uniform 定義
                         const paramsBuffer = [threshold, pixelSpace, sliceThickness]
                         const paramsBufferArray = new Float32Array(paramsBuffer)
@@ -339,16 +365,17 @@ export class WebGPU_MC {
                             triTable,
                             0
                         )
+                        
+                        const ssboInputs = gSSboBuffers(datas.length);
+                        for (let i = 0; i < datas.length; i++) {
+                            //ssboInput[] = createSSboInputs(0);
+                            device.queue.writeBuffer(ssboInputs[i], 0, datas[i], 0);
+                        }
+                        // const ssboInput = createSSboInputs(0);
+                        // device.queue.writeBuffer(ssboInput, 0, datas[0], 0);
 
-                        const ssboInput = createSSboInputs(0);
-                        // const ssboInput = device.createBuffer({
-                        //     mappedAtCreation: false,
-                        //     size: datas[0].byteLength,
-                        //     usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
-                        // });
                         //data update
-                        device.queue.writeBuffer(ssboInput, 0, datas[0], 0)
-                        //console.log("input", data)
+                        //console.log("input", datas[0])
 
                         const ssboOutput = device.createBuffer({
                             mappedAtCreation: false,
@@ -435,7 +462,7 @@ export class WebGPU_MC {
                             entries: [
                                 {
                                     binding: 0,
-                                    resource: { buffer: ssboInput }
+                                    resource: { buffer: ssboInputs[0] }
                                 },
                                 {
                                     binding: 1,
@@ -535,15 +562,20 @@ export class WebGPU_MC {
                         });
                         that.render();
                     }
-                    return ;// promise then
+                    return;// promise then
 
-                    function createSSboInputs(i: number){
+                    function createSSboInputs(i: number) {
                         return device.createBuffer({
                             mappedAtCreation: false,
                             size: datas[i].byteLength,
                             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
                         });
                     }
+
+                    // function putDataIntoSSboInput(ssboInputNumber: number) {
+                    //     const ssboInput = createSSboInputs(ssboInputNumber);
+                    //     device.queue.writeBuffer(ssboInput, 0, datas[ssboInputNumber], 0)
+                    // }
                 }); // promise then
             }
             reader.readAsArrayBuffer(file)
