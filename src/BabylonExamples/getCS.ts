@@ -5,22 +5,20 @@ export function getCsSource() {
 //Computer ShaderCompute//
 function computeMC() {
     return  /* wgsl */ `
-    
     struct Params {
         threshold:f32,
         pixelSpace:f32,
         sliceThickness:f32,
     };
-
     let seg = 10666665;
     let dimX: u32 = 512;
     let dimY: u32 = 512;
     let dimZ: u32 = 6;
     
     @group(0) @binding(0) var<storage, read_write> data : array<f32>;
-    @group(0) @binding(1) var<storage, write> ssboOutput : array<f32>;
     @group(0) @binding(2) var<uniform> params : Params;
     @group(0) @binding(3) var<storage> triTable: array<i32>;
+    @group(0) @binding(1) var<storage, write> ssboOutput : array<f32>;
     @group(0) @binding(4) var<storage, write> ssboOutput2 : array<f32>;
     @group(0) @binding(5) var<storage, write> ssboOutput3 : array<f32>;
     @group(0) @binding(6) var<storage, write> ssboOutput4 : array<f32>;
